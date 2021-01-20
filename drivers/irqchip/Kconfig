@@ -598,4 +598,14 @@ config APPLE_AIC
 	help
 	  Support for the Apple Interrupt Controller found on Apple Silicon SoCs such as the M1.
 
+config APPLE_FIQ
+	bool "Apple Fast IPI FIQ Controller"
+	depends on ARCH_APPLE || COMPILE_TEST
+	default ARCH_APPLE
+	select IRQ_DOMAIN
+	select IRQ_DOMAIN_HIERARCHY
+	help
+	  Support for the FIQ-based Fast IPI mechanism and timer interrupt found on Apple Silicon
+	  SoCs such as the M1.
+
 endmenu

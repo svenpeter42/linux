@@ -847,6 +847,9 @@ static int __of_address_to_resource(struct device_node *dev,
 		return -EINVAL;
 	memset(r, 0, sizeof(struct resource));
 
+	if (of_mmio_is_nonposted(dev))
+		flags |= IORESOURCE_MEM_NONPOSTED;
+
 	r->start = taddr;
 	r->end = taddr + size - 1;
 	r->flags = flags;
@@ -896,7 +899,10 @@ void __iomem *of_iomap(struct device_node *np, int index)
 	if (of_address_to_resource(np, index, &res))
 		return NULL;
 
-	return ioremap(res.start, resource_size(&res));
+	if (res.flags & IORESOURCE_MEM_NONPOSTED)
+		return ioremap_np(res.start, resource_size(&res));
+	else
+		return ioremap(res.start, resource_size(&res));
 }
 EXPORT_SYMBOL(of_iomap);
 
@@ -928,7 +934,11 @@ void __iomem *of_io_request_and_map(struct device_node *np, int index,
 	if (!request_mem_region(res.start, resource_size(&res), name))
 		return IOMEM_ERR_PTR(-EBUSY);
 
-	mem = ioremap(res.start, resource_size(&res));
+	if (res.flags & IORESOURCE_MEM_NONPOSTED)
+		mem = ioremap_np(res.start, resource_size(&res));
+	else
+		mem = ioremap(res.start, resource_size(&res));
+
 	if (!mem) {
 		release_mem_region(res.start, resource_size(&res));
 		return IOMEM_ERR_PTR(-ENOMEM);
@@ -1094,3 +1104,41 @@ bool of_dma_is_coherent(struct device_node *np)
 	return false;
 }
 EXPORT_SYMBOL_GPL(of_dma_is_coherent);
+
+/**
+ * of_mmio_is_nonposted - Check if device uses non-posted MMIO
+ * @np:	device node
+ *
+ * Returns true if the "nonposted-mmio" property was found for
+ * the device's bus or a parent. "posted-mmio" has the opposite
+ * effect, terminating recursion and overriding any
+ * "nonposted-mmio" properties in parent buses.
+ *
+ * Recursion terminates if reach a non-translatable boundary
+ * (a node without a 'ranges' property).
+ */
+bool of_mmio_is_nonposted(struct device_node *np)
+{
+	struct device_node *node;
+	struct device_node *parent;
+
+	node = of_get_parent(np);
+
+	while (node) {
+		if (!of_property_read_bool(node, "ranges")) {
+			break;
+		} else if (of_property_read_bool(node, "nonposted-mmio")) {
+			of_node_put(node);
+			return true;
+		} else if (of_property_read_bool(node, "posted-mmio")) {
+			break;
+		}
+		parent = of_get_parent(node);
+		of_node_put(node);
+		node = parent;
+	}
+
+	of_node_put(node);
+	return false;
+}
+EXPORT_SYMBOL_GPL(of_mmio_is_nonposted);

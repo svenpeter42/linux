@@ -101,6 +101,10 @@ extern void ioport_unmap(void __iomem *);
 #define ioremap_wt ioremap
 #endif
 
+#ifndef ARCH_HAS_IOREMAP_NP
+#define ioremap_np ioremap
+#endif
+
 #ifdef CONFIG_PCI
 /* Destroy a virtual mapping cookie for a PCI BAR (memory or IO) */
 struct pci_dev;

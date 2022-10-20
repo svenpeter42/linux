@@ -10,6 +10,8 @@
 
 #include "iomfb.h"
 
+#define DCP_MAX_PLANES 2
+
 struct apple_dcp;
 
 /* Temporary backing for a chunked transfer via setDCPAVPropStart/Chunk/End */

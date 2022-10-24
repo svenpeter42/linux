@@ -20,6 +20,7 @@
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_vblank.h>
 
+#include "afk.h"
 #include "dcp.h"
 #include "dcp-internal.h"
 #include "parser.h"
@@ -97,6 +98,12 @@ static void dcp_recv_msg(void *cookie, u8 endpoint, u64 message)
 	switch (endpoint) {
 	case IOMFB_ENDPOINT:
 		return iomfb_recv_msg(dcp, message);
+	case SYSTEM_ENDPOINT:
+		afk_receive_message(dcp->systemep, message);
+		return;
+	case DPTX_ENDPOINT:
+		afk_receive_message(dcp->dptxep, message);
+		return;
 	default:
 		WARN(endpoint, "unknown DCP endpoint %hhu", endpoint);
 	}
@@ -217,7 +224,7 @@ void dcp_send_message(struct apple_dcp *dcp, u8 endpoint, u64 message)
 {
 	trace_dcp_send_msg(dcp, endpoint, message);
 	apple_rtkit_send_message(dcp->rtk, endpoint, message, NULL,
-				 false);
+				 true);
 }
 
 void dcp_link(struct platform_device *pdev, struct apple_crtc *crtc,
@@ -236,6 +243,8 @@ int dcp_start(struct platform_device *pdev)
 	int ret;
 
 	/* start RTKit endpoints */
+	ret = systemep_init(dcp);
+	ret = dptxep_init(dcp);
 	ret = iomfb_start_rtkit(dcp);
 	if (ret)
 		dev_err(dcp->dev, "Failed to start IOMFB endpoint: %d", ret);
@@ -356,7 +365,6 @@ static int dcp_platform_probe(struct platform_device *pdev)
 	if (ret)
 		return dev_err_probe(dev, PTR_ERR(dcp->rtk),
 				     "Failed to boot RTKit: %d", ret);
-
 	return ret;
 }
 

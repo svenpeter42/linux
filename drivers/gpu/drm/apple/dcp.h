@@ -93,5 +93,8 @@ int iomfb_start_rtkit(struct apple_dcp *dcp);
 void iomfb_shutdown(struct apple_dcp *dcp);
 /* rtkit message handler for IOMFB messages */
 void iomfb_recv_msg(struct apple_dcp *dcp, u64 message);
+void iomfb_resume(struct apple_dcp *dcp);
 
+int systemep_init(struct apple_dcp *dcp);
+int dptxep_init(struct apple_dcp *dcp);
 #endif
